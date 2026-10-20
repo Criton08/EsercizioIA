@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>StudyBuddy - Statistiche</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/utils.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h2>📚 StudyBuddy</h2>
+        <div><a href="index.html">Home</a></div>
+    </div>
+
+    <div class="container">
+        <h1>📊 Le tue statistiche</h1>
+        <div class="box" style="display: flex; gap: 40px">
+            <div><h2 id="totale">-</h2>quiz svolti</div>
+            <div><h2 id="media">-</h2>media punteggio</div>
+        </div>
+        <div class="box">
+            <h3>Storico</h3>
+            <table style="width: 100%" id="tabella">
+                <tr><th align="left">Data</th><th align="left">Mazzo</th><th align="left">Corrette</th><th align="left">Punteggio</th><th align="left">Giudizio</th></tr>
+            </table>
+            <p id="empty" style="color: gray; display: none">Nessun quiz ancora svolto. Mettiti alla prova! 💪</p>
+        </div>
+    </div>
+
+    <script src="js/stats.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6fb;
+    margin: 0;
+    color: #222;
+}
+
+.header {
+    background: #3b5bdb;
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header a {
+    color: white;
+    margin-left: 15px;
+    text-decoration: none;
+}
+
+.container {
+    width: 900px;
+    margin: 30px auto;
+}
+
+.deck-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.deck {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 250px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.deck h3 {
+    margin-top: 0;
+}
+
+.materia {
+    display: inline-block;
+    background: #e7ecff;
+    color: #3b5bdb;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.btn {
+    background: #3b5bdb;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+}
+
+.btn:hover {
+    background: #2b44b0;
+}
+
+.btn-red {
+    background: #e03131 !important;
+}
+
+.btn-green {
+    background: #2f9e44 !important;
+}
+
+.box {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+input, textarea, select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    margin: 4px 0;
+}
+
+.flashcard {
+    width: 500px;
+    height: 280px;
+    margin: 30px auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    text-align: center;
+    padding: 20px;
+    cursor: pointer;
+}
+
+.flashcard.back {
+    background: #fff9db;
+}
+
+.center {
+    text-align: center;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
+
+.box {
+    padding: 25px;
+}

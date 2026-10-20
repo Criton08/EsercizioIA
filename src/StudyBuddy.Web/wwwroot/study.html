@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>StudyBuddy - Studio</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/utils.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h2>📚 StudyBuddy</h2>
+        <div><a href="index.html">Home</a></div>
+    </div>
+
+    <div class="container center">
+        <h1 id="title"></h1>
+        <p id="counter"></p>
+        <div id="card" class="flashcard" onclick="flip()"></div>
+        <p style="color: gray">Clicca sulla carta per girarla</p>
+        <div id="buttons" style="display: none">
+            <button class="btn btn-red" onclick="answer(false)">Non lo so 😕</button>
+            <button class="btn btn-green" onclick="answer(true)">Lo so! 😎</button>
+        </div>
+        <div id="end" style="display: none">
+            <h2>Hai finito! 🎉</h2>
+            <p id="summary"></p>
+            <a class="btn" href="index.html">Torna ai mazzi</a>
+        </div>
+    </div>
+
+    <script src="js/study.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>StudyBuddy - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header"><h2>📚 StudyBuddy</h2></div>
+    <div class="container" style="width: 400px">
+        <div class="box">
+            <h3>Accedi</h3>
+            <input id="username" placeholder="Username" style="width: 95%"><br>
+            <input id="pwd" type="password" placeholder="Password" style="width: 95%"><br><br>
+            <button class="btn" onclick="login()">Entra</button>
+            <button class="btn btn-green" onclick="register()">Registrati</button>
+            <p id="msg" style="color: red"></p>
+        </div>
+    </div>
+
+    <script>
+        function login() {
+            var user = document.getElementById("username").value;
+            var pw = document.getElementById("pwd").value;
+            // controllo campi
+            if (user == "" || pw == "") {
+                document.getElementById("msg").innerText = "Compila tutti i campi";
+                return;
+            }
+            fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: user, password: pw })
+            }).then(function (r) {
+                if (r.status == 401) {
+                    document.getElementById("msg").innerText = "Credenziali sbagliate";
+                    return;
+                }
+                r.json().then(function (data) {
+                    localStorage.setItem("user", JSON.stringify(data));
+                    window.location.href = "index.html";
+                });
+            });
+        }
+
+        function register() {
+            var user = document.getElementById("username").value;
+            var pw = document.getElementById("pwd").value;
+            // controllo campi
+            if (user == "" || pw == "") {
+                document.getElementById("msg").innerText = "Compila tutti i campi!";
+                return;
+            }
+            if (pw.length < 4) {
+                document.getElementById("msg").innerText = "Password troppo corta";
+                return;
+            }
+            fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: user, password: pw })
+            }).then(function (r) {
+                if (!r.ok) {
+                    document.getElementById("msg").innerText = "Errore registrazione";
+                    return;
+                }
+                r.json().then(function (data) {
+                    localStorage.setItem("user", JSON.stringify(data));
+                    window.location.href = "index.html";
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "StudyBuddy",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "forwardPorts": [5200],
+  "portsAttributes": {
+    "5200": {
+      "label": "StudyBuddy",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "dotnet restore",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "qwtel.sqlite-viewer"
+      ]
+    }
+  }
+}

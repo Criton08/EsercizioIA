@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>StudyBuddy</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/utils.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h2>📚 StudyBuddy</h2>
+        <div>
+            <span id="who"></span>
+            <a href="stats.html">📊 Statistiche</a>
+            <a href="#" onclick="logout()">Esci</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <h3>Nuovo mazzo</h3>
+            <input id="name" placeholder="Nome mazzo">
+            <select id="materia">
+                <option>Storia</option>
+                <option>Scienze</option>
+                <option>Inglese</option>
+                <option>Informatica</option>
+                <option>Matematica</option>
+                <option>Altro</option>
+            </select>
+            <input id="desc" placeholder="Descrizione" style="width: 300px">
+            <button class="btn" onclick="creaMazzo()">Crea</button>
+        </div>
+
+        <div class="box">
+            <input id="q" placeholder="Cerca nelle carte..." style="width: 400px">
+            <button class="btn" onclick="search()">Cerca</button>
+            <div id="results"></div>
+        </div>
+
+        <h2>I tuoi mazzi</h2>
+        <div id="decks" class="deck-list"></div>
+    </div>
+
+    <script>
+        checkLogin();
+        document.getElementById("who").innerText = "Ciao " + getUser().username;
+
+        // carica i set
+        function loadDecks() {
+            fetch("/api/decks").then(r => r.json()).then(data => {
+                var html = "";
+                for (var i = 0; i < data.length; i++) {
+                    var d = data[i];
+                    html += '<div class="deck">';
+                    html += '<span class="materia">' + d.materia + '</span>';
+                    html += '<h3>' + d.name + '</h3>';
+                    html += '<p>' + (d.descrizione || '') + '</p>';
+                    html += '<p><b>' + d.numCarte + '</b> carte</p>';
+                    html += '<a class="btn" href="study.html?deck=' + d.id + '">Studia</a> ';
+                    html += '<a class="btn btn-green" href="quiz.html?deck=' + d.id + '">Quiz</a> ';
+                    html += '<a class="btn" href="deck.html?id=' + d.id + '">Modifica</a>';
+                    html += '</div>';
+                }
+                document.getElementById("decks").innerHTML = html;
+            });
+        }
+
+        // crea un nuovo set
+        function creaMazzo() {
+            var deck = {
+                name: document.getElementById("name").value,
+                materia: document.getElementById("materia").value,
+                descrizione: document.getElementById("desc").value
+            };
+            fetch("/api/decks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(deck)
+            }).then(() => {
+                document.getElementById("name").value = "";
+                document.getElementById("desc").value = "";
+                loadDecks();
+            });
+        }
+
+        // ricerca
+        async function search() {
+            const q = document.getElementById("q").value;
+            const res = await fetch("/api/search?q=" + q);
+            if (!res.ok) {
+                document.getElementById("results").innerHTML = "<p>Errore nella ricerca</p>";
+                return;
+            }
+            const data = await res.json();
+            let html = "<p>" + data.length + " risultati</p>";
+            data.forEach(r => {
+                html += '<div class="card-row"><span><b>' + r.front + '</b> → ' + r.back + '</span><i>' + r.deckName + '</i></div>';
+            });
+            document.getElementById("results").innerHTML = html;
+        }
+
+        loadDecks();
+    </script>
+</body>
+</html>
