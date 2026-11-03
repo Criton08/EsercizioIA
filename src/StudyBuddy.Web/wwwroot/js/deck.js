@@ -30,17 +30,37 @@ async function addCard() {
 }
 
 async function addQuestion() {
+    const fields = ["op1", "op2", "op3", "op4"];
+    // the select is 1-based (1-4), the server wants a 0-based index among the options it receives
+    const chosen = parseInt(document.getElementById("corretta").value) - 1;
+
+    // empty options are skipped, so the correct index must be recalculated among the kept ones
+    const opzioni = [];
+    let rispostaCorretta = -1;
+    fields.forEach((f, i) => {
+        const text = document.getElementById(f).value.trim();
+        if (text == "") return;
+        if (i == chosen) rispostaCorretta = opzioni.length;
+        opzioni.push(text);
+    });
+
+    if (rispostaCorretta == -1) {
+        alert("L'opzione indicata come corretta è vuota.");
+        return;
+    }
+
     const body = {
-        domanda: document.getElementById("domanda").value,
-        opzioni: [
-            document.getElementById("op1").value,
-            document.getElementById("op2").value,
-            document.getElementById("op3").value,
-            document.getElementById("op4").value
-        ],
-        rispostaCorretta: parseInt(document.getElementById("corretta").value)
+        domanda: document.getElementById("domanda").value.trim(),
+        opzioni,
+        rispostaCorretta
     };
-    await apiPost("/api/quiz/" + id + "/questions", body);
+    const result = await apiPost("/api/quiz/" + id + "/questions", body);
+    if (result == null) {
+        alert("Domanda non aggiunta: serve il testo della domanda e almeno 2 opzioni (senza il carattere |).");
+        return;
+    }
+
+    ["domanda", ...fields].forEach(f => document.getElementById(f).value = "");
     alert("Domanda aggiunta!");
 }
 

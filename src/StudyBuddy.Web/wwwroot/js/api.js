@@ -17,6 +17,7 @@ export async function apiPost(url, body) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
         });
+        if (!res.ok) return null; // the server refused the request (400, 404, 401...)
         return await res.json();
     } catch (e) {
         console.log(e);

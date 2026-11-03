@@ -64,7 +64,7 @@ if (args.Length == 2 && args[0] == "add-quiz")
             ? (SharedQuizStatus.Invalid, "empty or invalid JSON", null)
             : SharedQuizCreator.Create(cliDb, quiz);
         Console.WriteLine(status == SharedQuizStatus.Created
-            ? $"OK id={deck!.Id} name=\"{deck.Name}\" domande={quiz!.Domande.Count}"
+            ? $"OK id={deck!.Id} name=\"{deck.Name}\" domande={quiz!.Domande.Count} carte={quiz.Carte?.Count ?? 0}"
             : $"{status.ToString().ToUpper()}: {message}");
         Environment.ExitCode = status == SharedQuizStatus.Created ? 0 : status == SharedQuizStatus.Duplicate ? 2 : 1;
     }
@@ -77,7 +77,12 @@ if (args.Length == 2 && args[0] == "add-quiz")
 }
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+// no-cache: the browser must revalidate JS/HTML on every load (cheap 304 answers),
+// otherwise it can keep running an old script after the code has been fixed
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
+});
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -197,8 +202,10 @@ app.MapDelete("/api/cards/{id}", (int id, ClaimsPrincipal user, StudyDbContext d
 app.MapPut("/api/cards/{id}/known", (int id, ClaimsPrincipal user, StudyDbContext db) =>
 {
     var userId = user.GetUserId();
-    var c = db.Cards.FirstOrDefault(x => x.Id == id && x.Deck!.UserId == userId);
+    var c = db.Cards.FirstOrDefault(x => x.Id == id && (x.Deck!.UserId == userId || x.Deck.UserId == null));
     if (c == null) return Results.NotFound();
+    // shared cards belong to nobody: the box is not saved, or it would be shared by all users
+    if (db.Decks.Any(d => d.Id == c.DeckId && d.UserId == null)) return Results.Ok(c);
     c.Box = Math.Min(c.Box + 1, 5); // max 5 boxes
     c.LastReview = DateTime.Now;
     db.SaveChanges();
@@ -209,8 +216,10 @@ app.MapPut("/api/cards/{id}/known", (int id, ClaimsPrincipal user, StudyDbContex
 app.MapPut("/api/cards/{id}/unknown", (int id, ClaimsPrincipal user, StudyDbContext db) =>
 {
     var userId = user.GetUserId();
-    var c = db.Cards.FirstOrDefault(x => x.Id == id && x.Deck!.UserId == userId);
+    var c = db.Cards.FirstOrDefault(x => x.Id == id && (x.Deck!.UserId == userId || x.Deck.UserId == null));
     if (c == null) return Results.NotFound();
+    // shared cards belong to nobody: the box is not saved, or it would be shared by all users
+    if (db.Decks.Any(d => d.Id == c.DeckId && d.UserId == null)) return Results.Ok(c);
     c.Box = 1; // a missed card always restarts from the first box
     c.LastReview = DateTime.Now;
     db.SaveChanges();

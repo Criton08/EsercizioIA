@@ -5,8 +5,12 @@ namespace StudyBuddy.Web.Services;
 
 public record SharedQuestion(string Testo, bool Vera, string? Spiegazione);
 
-// Argomento is optional: it narrows the quiz to a topic inside the subject
-public record SharedQuizRequest(string Materia, string? Argomento, List<SharedQuestion> Domande);
+// A flashcard of the shared deck: Fronte is the question or term, Retro the answer
+public record SharedCard(string Fronte, string Retro);
+
+// Argomento is optional: it narrows the quiz to a topic inside the subject.
+// Carte is optional: the flashcards shown in study mode.
+public record SharedQuizRequest(string Materia, string? Argomento, List<SharedQuestion> Domande, List<SharedCard>? Carte = null);
 
 public enum SharedQuizStatus { Created, Invalid, Duplicate }
 
@@ -23,6 +27,9 @@ public static class SharedQuizCreator
         if (req.Domande == null || req.Domande.Count == 0 || req.Domande.Count > 50
             || req.Domande.Any(d => string.IsNullOrWhiteSpace(d.Testo)))
             return (SharedQuizStatus.Invalid, "domande must contain 1-50 statements with text", null);
+        if (req.Carte != null && (req.Carte.Count > 100
+            || req.Carte.Any(c => string.IsNullOrWhiteSpace(c.Fronte) || string.IsNullOrWhiteSpace(c.Retro))))
+            return (SharedQuizStatus.Invalid, "carte must contain at most 100 cards with fronte and retro", null);
 
         var materia = req.Materia.Trim();
         var argomento = string.IsNullOrWhiteSpace(req.Argomento) ? null : req.Argomento.Trim();
@@ -51,6 +58,10 @@ public static class SharedQuizCreator
             RispostaCorretta = d.Vera ? 0 : 1,
             Spiegazione = d.Spiegazione
         }));
+
+        // flashcards for study mode
+        if (req.Carte != null)
+            db.Cards.AddRange(req.Carte.Select(c => new Card { DeckId = deck.Id, Front = c.Fronte.Trim(), Back = c.Retro.Trim() }));
         db.SaveChanges();
 
         return (SharedQuizStatus.Created, "ok", deck);

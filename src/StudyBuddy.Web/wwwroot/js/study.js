@@ -8,12 +8,29 @@ var known = 0; // carte sapute
 var idMazzo = getParam("deck");
 
 fetch("/api/decks/" + idMazzo)
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+        if (!r.ok) throw new Error("deck not available (" + r.status + ")");
+        return r.json();
+    })
     .then(function (deck) {
         document.getElementById("title").innerText = deck.name;
+        if (deck.cards.length == 0) {
+            showMessage("Questo mazzo non ha carte da studiare.");
+            return;
+        }
         listaCarte = shuffle(deck.cards);
         show();
+    })
+    .catch(function () {
+        showMessage("Impossibile caricare il mazzo. Prova ad accedere di nuovo.");
     });
+
+// shows a message instead of the card (empty deck, load error)
+function showMessage(text) {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("counter").innerText = text;
+    document.getElementById("hint").style.display = "none";
+}
 
 function show() {
     showingBack = false;
@@ -47,7 +64,7 @@ function answer(isKnown) {
 // passa alla carta successiva
 function next() {
     indice++; // incrementa indice
-    if (indice >= listaCarte.length - 1) {
+    if (indice >= listaCarte.length) { // the last card must be shown too
         finish();
         return;
     }
