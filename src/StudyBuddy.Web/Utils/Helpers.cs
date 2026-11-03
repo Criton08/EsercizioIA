@@ -1,17 +1,17 @@
 namespace StudyBuddy.Web.Utils;
 
-// funzioni di utilita varie
+// miscellaneous helper functions
 public static class Helpers
 {
     static Random rnd = new Random();
 
-    // mischia una lista (fisher yates)
+    // shuffles a list (Fisher-Yates)
     public static List<T> Shuffle<T>(List<T> list)
     {
         var l = new List<T>(list);
         for (int i = l.Count - 1; i > 0; i--)
         {
-            int j = rnd.Next(i);
+            int j = rnd.Next(i + 1); // j must be allowed to equal i, otherwise the shuffle is biased
             (l[i], l[j]) = (l[j], l[i]);
         }
         return l;
@@ -28,7 +28,7 @@ public static class Helpers
         return (int)Math.Round(giuste * 100.0 / totali);
     }
 
-    // giudizio in base al punteggio
+    // verdict based on the score
     public static string Giudizio(int punteggio)
     {
         if (punteggio >= 90) return "Ottimo";

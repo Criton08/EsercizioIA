@@ -8,6 +8,12 @@ namespace StudyBuddy.Web.Services;
 /// </summary>
 public interface IQuizService
 {
+    /// <summary>True if the deck exists and belongs to the user (needed to add questions).</summary>
+    Task<bool> DeckBelongsToUserAsync(int deckId, int userId);
+
+    /// <summary>True if the user can take the quiz of the deck: it is his own or a shared one.</summary>
+    Task<bool> DeckIsVisibleToUserAsync(int deckId, int userId);
+
     /// <summary>Returns the questions of a deck in random order.</summary>
     Task<List<QuizQuestionDto>> GetQuestionsAsync(int deckId);
 

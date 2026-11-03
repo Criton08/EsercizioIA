@@ -1,8 +1,13 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using StudyBuddy.Web.Data;
 using StudyBuddy.Web.Models;
 using StudyBuddy.Web.Services;
 using StudyBuddy.Web.Endpoints;
+using StudyBuddy.Web.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,143 +20,217 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<DeckService>();
 
+// Authentication: a cookie issued at login identifies the user on every request.
+// APIs answer 401/403 instead of redirecting to a login page.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o =>
+    {
+        o.Cookie.Name = "studybuddy.auth";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Lax; // the cookie is not sent on cross-site POST/PUT/DELETE
+        o.ExpireTimeSpan = TimeSpan.FromHours(8);
+        o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = 401; return Task.CompletedTask; };
+        o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = 403; return Task.CompletedTask; };
+    });
+
+// Every endpoint requires a logged-in user unless it is marked AllowAnonymous.
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
 var app = builder.Build();
 
-// crea il db se non c'e
+// create the DB if it does not exist
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<StudyDbContext>();
     db.Database.EnsureCreated();
+    // an existing DB created before decks had an owner needs the UserId column
+    new DbHelper(app.Configuration.GetConnectionString("Default")!).EnsureDeckOwnerColumn();
     Seed.Init(db);
+}
+
+// Command line mode: "dotnet run -- add-quiz <file.json>" adds a shared quiz straight to the DB and exits
+// without starting the web server (no admin key needed: whoever runs it already has access to the DB file).
+if (args.Length == 2 && args[0] == "add-quiz")
+{
+    using var cliScope = app.Services.CreateScope();
+    var cliDb = cliScope.ServiceProvider.GetRequiredService<StudyDbContext>();
+    try
+    {
+        var json = File.ReadAllText(args[1]);
+        var quiz = System.Text.Json.JsonSerializer.Deserialize<SharedQuizRequest>(json,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var (status, message, deck) = quiz == null
+            ? (SharedQuizStatus.Invalid, "empty or invalid JSON", null)
+            : SharedQuizCreator.Create(cliDb, quiz);
+        Console.WriteLine(status == SharedQuizStatus.Created
+            ? $"OK id={deck!.Id} name=\"{deck.Name}\" domande={quiz!.Domande.Count}"
+            : $"{status.ToString().ToUpper()}: {message}");
+        Environment.ExitCode = status == SharedQuizStatus.Created ? 0 : status == SharedQuizStatus.Duplicate ? 2 : 1;
+    }
+    catch (Exception e) when (e is IOException or System.Text.Json.JsonException)
+    {
+        Console.WriteLine($"INVALID: {e.Message}");
+        Environment.ExitCode = 1;
+    }
+    return;
 }
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // ===================== LOGIN =====================
 
-// login sicuro: la password viene verificata in modo protetto
-app.MapPost("/api/login", (StudyDbContext db, LoginRequest req) =>
+// login: the password is checked against the stored hash, then the auth cookie is issued
+app.MapPost("/api/login", async (HttpContext ctx, StudyDbContext db, LoginRequest req) =>
 {
-    // cerca l'utente
-    var u = db.Users.FirstOrDefault(x => x.Username == req.Username && x.Password == req.Password);
-    if (u == null) return Results.Unauthorized();
+    if (string.IsNullOrEmpty(req.Username) || string.IsNullOrEmpty(req.Password))
+        return Results.Unauthorized();
+
+    // find the user
+    var u = db.Users.FirstOrDefault(x => x.Username == req.Username);
+    if (u == null || !PasswordHasher.Verify(req.Password, u.Password, out var needsRehash))
+        return Results.Unauthorized();
+
+    // old plain-text password: store it as a hash on the first successful login
+    if (needsRehash)
+    {
+        u.Password = PasswordHasher.Hash(req.Password);
+        db.SaveChanges();
+    }
+
+    var identity = new ClaimsIdentity(new[]
+    {
+        new Claim(ClaimTypes.NameIdentifier, u.Id.ToString()),
+        new Claim(ClaimTypes.Name, u.Username)
+    }, CookieAuthenticationDefaults.AuthenticationScheme);
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
     return Results.Ok(new { u.Id, u.Username });
-});
+}).AllowAnonymous();
+
+app.MapPost("/api/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Ok();
+}).AllowAnonymous();
 
 app.MapPost("/api/register", (StudyDbContext db, LoginRequest req) =>
 {
+    if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrEmpty(req.Password))
+        return Results.BadRequest("username e password obbligatori");
+
     if (db.Users.Any(x => x.Username == req.Username))
         return Results.BadRequest("utente gia esistente");
 
-    // crea il nuovo utente
-    var u = new User { Username = req.Username, Password = req.Password };
-    db.Users.Add(u); // aggiunge l'utente
-    db.SaveChanges(); // salva
+    // create the new user (the password is stored as a hash)
+    var u = new User { Username = req.Username, Password = PasswordHasher.Hash(req.Password) };
+    db.Users.Add(u);
+    db.SaveChanges();
     return Results.Ok(new { u.Id, u.Username });
+}).AllowAnonymous();
+
+// ===================== DECKS =====================
+// Every deck belongs to the user who created it: users only see and change their own decks.
+// Someone else's deck behaves as if it did not exist (404).
+
+// the decks of the logged-in user
+app.MapGet("/api/decks", (ClaimsPrincipal user, DeckService service) => service.GetAllDecks(user.GetUserId()));
+
+// returns the deck, or 404 if it does not exist or belongs to another user
+app.MapGet("/api/decks/{id}", (int id, ClaimsPrincipal user, DeckService service) =>
+{
+    var d = service.GetDeck(id, user.GetUserId());
+    return d == null ? Results.NotFound() : Results.Ok(d);
 });
 
-// ===================== MAZZI =====================
-
-// ✅ moved to DeckService
-app.MapGet("/api/decks", (DeckService service) => service.GetAllDecks());
-
-//app.MapGet("/api/decks", (StudyDbContext db) =>
-//{
-//    var decks = db.Decks.ToList();
-//    var res = new List<object>();
-//    foreach (var d in decks)
-//    {
-//        var n = db.Cards.Count(c => c.DeckId == d.Id);
-//        res.Add(new { d.Id, d.Name, d.Materia, d.Descrizione, numCarte = n });
-//    }
-//    return res;
-//});
-
-// ritorna il mazzo, se non esiste ritorna 404
-app.MapGet("/api/decks/{id}", (int id, StudyDbContext db) =>
+// binds a DTO, not the entity: clients cannot set Id, UserId, CreatedAt or Cards
+app.MapPost("/api/decks", (ClaimsPrincipal user, StudyDbContext db, NewDeckRequest req) =>
 {
-    var d = db.Decks.Include(x => x.Cards).FirstOrDefault(x => x.Id == id);
-    return d;
-});
+    if (string.IsNullOrWhiteSpace(req.Name))
+        return Results.BadRequest("name is required");
 
-app.MapPost("/api/decks", (StudyDbContext db, Deck deck) =>
-{
+    var deck = new Deck { UserId = user.GetUserId(), Name = req.Name, Descrizione = req.Descrizione };
+    if (!string.IsNullOrEmpty(req.Materia)) deck.Materia = req.Materia;
     db.Decks.Add(deck);
     db.SaveChanges();
-    return deck;
+    return Results.Ok(deck);
 });
 
-app.MapDelete("/api/decks/{id}", (int id, StudyDbContext db) =>
+// deletes the deck with its cards and questions
+app.MapDelete("/api/decks/{id}", (int id, ClaimsPrincipal user, DeckService service) =>
 {
-    var d = db.Decks.Find(id);
-    if (d != null)
-    {
-        db.Decks.Remove(d);
-        try
-        {
-            db.SaveChanges();
-        }
-        catch
-        {
-            // a volte da errore, ignoro
-        }
-    }
-    return Results.Ok();
+    return service.DeleteDeck(id, user.GetUserId()) ? Results.Ok() : Results.NotFound();
 });
 
-// ===================== CARTE =====================
+// ===================== CARDS =====================
 
-app.MapPost("/api/decks/{id}/cards", (int id, Card card, StudyDbContext db) =>
+// binds a DTO, not the entity: clients cannot set Id, Box or LastReview
+app.MapPost("/api/decks/{id}/cards", (int id, NewCardRequest req, ClaimsPrincipal user, StudyDbContext db) =>
 {
-    card.DeckId = id;
+    var userId = user.GetUserId();
+    if (!db.Decks.Any(d => d.Id == id && d.UserId == userId))
+        return Results.NotFound();
+    if (string.IsNullOrWhiteSpace(req.Front) || string.IsNullOrWhiteSpace(req.Back))
+        return Results.BadRequest("front and back are required");
+
+    var card = new Card { DeckId = id, Front = req.Front, Back = req.Back };
     db.Cards.Add(card);
     db.SaveChanges();
-    return card;
+    return Results.Ok(card);
 });
 
-// elimina la carta (controlla che la carta appartenga all'utente loggato)
-app.MapDelete("/api/cards/{id}", (int id, StudyDbContext db) =>
+// deletes the card, only if it belongs to a deck of the logged-in user
+app.MapDelete("/api/cards/{id}", (int id, ClaimsPrincipal user, StudyDbContext db) =>
 {
-    var c = db.Cards.Find(id);
-    db.Cards.Remove(c!);
+    var userId = user.GetUserId();
+    var c = db.Cards.FirstOrDefault(x => x.Id == id && x.Deck!.UserId == userId);
+    if (c == null) return Results.NotFound();
+    db.Cards.Remove(c);
     db.SaveChanges();
     return Results.Ok();
 });
 
-// la so -> sale di scatola
-app.MapPut("/api/cards/{id}/known", (int id, StudyDbContext db) =>
+// known -> moves up one box
+app.MapPut("/api/cards/{id}/known", (int id, ClaimsPrincipal user, StudyDbContext db) =>
 {
-    var c = db.Cards.Find(id);
-    c!.Box++; // max 5 scatole
+    var userId = user.GetUserId();
+    var c = db.Cards.FirstOrDefault(x => x.Id == id && x.Deck!.UserId == userId);
+    if (c == null) return Results.NotFound();
+    c.Box = Math.Min(c.Box + 1, 5); // max 5 boxes
     c.LastReview = DateTime.Now;
     db.SaveChanges();
     return Results.Ok(c);
 });
 
-// non la so -> torna alla scatola 1
-app.MapPut("/api/cards/{id}/unknown", (int id, StudyDbContext db) =>
+// unknown -> back to box 1
+app.MapPut("/api/cards/{id}/unknown", (int id, ClaimsPrincipal user, StudyDbContext db) =>
 {
-    var c = db.Cards.Find(id);
-    c!.Box = 1; // FIXME non toccare!!!
+    var userId = user.GetUserId();
+    var c = db.Cards.FirstOrDefault(x => x.Id == id && x.Deck!.UserId == userId);
+    if (c == null) return Results.NotFound();
+    c.Box = 1; // a missed card always restarts from the first box
     c.LastReview = DateTime.Now;
     db.SaveChanges();
     return Results.Ok(c);
 });
 
-// ===================== RICERCA =====================
+// ===================== SEARCH =====================
 
-app.MapGet("/api/search", (string q, IConfiguration config) =>
+app.MapGet("/api/search", (string q, ClaimsPrincipal user, IConfiguration config) =>
 {
-    // TODO sistemare
     var helper = new DbHelper(config.GetConnectionString("Default")!);
-    return helper.Search(q);
+    return helper.Search(q, user.GetUserId());
 });
 
 app.MapControllers();
-app.MapStatsEndpoints(); // 📊
+app.MapStatsEndpoints();
 app.MapAdmin();
 
 app.Run();
 
 record LoginRequest(string Username, string Password);
+record NewDeckRequest(string? Name, string? Descrizione, string? Materia);
+record NewCardRequest(string? Front, string? Back);

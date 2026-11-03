@@ -53,9 +53,9 @@
                 for (var i = 0; i < data.length; i++) {
                     var d = data[i];
                     html += '<div class="deck">';
-                    html += '<span class="materia">' + d.materia + '</span>';
-                    html += '<h3>' + d.name + '</h3>';
-                    html += '<p>' + (d.descrizione || '') + '</p>';
+                    html += '<span class="materia">' + escapeHtml(d.materia) + '</span>';
+                    html += '<h3>' + escapeHtml(d.name) + '</h3>';
+                    html += '<p>' + escapeHtml(d.descrizione || '') + '</p>';
                     html += '<p><b>' + d.numCarte + '</b> carte</p>';
                     html += '<a class="btn" href="study.html?deck=' + d.id + '">Studia</a> ';
                     html += '<a class="btn btn-green" href="quiz.html?deck=' + d.id + '">Quiz</a> ';
@@ -87,7 +87,7 @@
         // ricerca
         async function search() {
             const q = document.getElementById("q").value;
-            const res = await fetch("/api/search?q=" + q);
+            const res = await fetch("/api/search?q=" + encodeURIComponent(q));
             if (!res.ok) {
                 document.getElementById("results").innerHTML = "<p>Errore nella ricerca</p>";
                 return;
@@ -95,7 +95,7 @@
             const data = await res.json();
             let html = "<p>" + data.length + " risultati</p>";
             data.forEach(r => {
-                html += '<div class="card-row"><span><b>' + r.front + '</b> → ' + r.back + '</span><i>' + r.deckName + '</i></div>';
+                html += '<div class="card-row"><span><b>' + escapeHtml(r.front) + '</b> → ' + escapeHtml(r.back) + '</span><i>' + escapeHtml(r.deckName || '') + '</i></div>';
             });
             document.getElementById("results").innerHTML = html;
         }

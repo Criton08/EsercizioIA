@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-Instructions for AI coding agents working in this repository.
-
 ## Stack
 
 - .NET 10 (`net10.0`), ASP.NET Core minimal APIs plus one MVC controller
@@ -18,6 +16,7 @@ dotnet run
 - Open `http://localhost:5200` (port comes from `Properties/launchSettings.json`).
 - The DB is created and seeded on startup at `database/studybuddy.db` (relative to the working directory, gitignored).
 - Demo users: `mario` / `password123`, `giulia` / `giulia2008`.
+- Admin endpoints (`/api/admin/*`) are disabled unless `AdminKey` is configured (env var `AdminKey` or `dotnet user-secrets set AdminKey <value>`). Send it in the `X-Admin-Key` header.
 - The dev container (`.devcontainer/devcontainer.json`) runs `dotnet restore` only; it does not start the app.
 
 ## Code layout (src/StudyBuddy.Web)

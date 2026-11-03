@@ -2,3 +2,20 @@ bin/
 obj/
 .vs/
 database/
+
+# SQLite databases (contain user data and password hashes)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Secrets and local configuration
+.env
+.env.*
+secrets.json
+appsettings.*.local.json
+appsettings.Local.json
+*.pfx
+*.key
+*.pem

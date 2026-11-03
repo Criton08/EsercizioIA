@@ -37,10 +37,10 @@ class QuizApp {
 
         const q = this.questions[this.current];
         let html = `<div class="progress">Domanda ${this.current + 1} di ${this.questions.length}</div>`;
-        html += `<div class="question">${q.domanda}</div>`;
+        html += `<div class="question">${escapeHtml(q.domanda)}</div>`;
 
         q.opzioni.forEach((option, i) => {
-            html += `<button class="option" data-index="${i}">${option}</button>`;
+            html += `<button class="option" data-index="${i}">${escapeHtml(option)}</button>`;
         });
 
         this.container.innerHTML = html;
@@ -89,14 +89,14 @@ class QuizApp {
             // risposta giusta o sbagliata
             if (d.correct == true) {
                 html += `<div class="detail ok">`;
-                html += `✅ ${q.domanda}<br>`;
+                html += `✅ ${escapeHtml(q.domanda)}<br>`;
             } else {
                 html += `<div class="detail ko">`;
-                html += `❌ ${q.domanda}<br>`;
+                html += `❌ ${escapeHtml(q.domanda)}<br>`;
             }
-            html += `<small>Risposta corretta: <b>${q.opzioni[d.correctIndex]}</b></small>`;
+            html += `<small>Risposta corretta: <b>${escapeHtml(q.opzioni[d.correctIndex])}</b></small>`;
             if (d.spiegazione) {
-                html += `<br><small><i>${d.spiegazione}</i></small>`;
+                html += `<br><small><i>${escapeHtml(d.spiegazione)}</i></small>`;
             }
             html += `</div>`;
         });

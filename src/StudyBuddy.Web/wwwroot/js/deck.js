@@ -14,7 +14,7 @@ async function load() {
 
     let html = "";
     deck.cards.forEach(c => {
-        html += `<div class="card-row"><span><b>${c.front}</b> → ${c.back}</span>`;
+        html += `<div class="card-row"><span><b>${escapeHtml(c.front)}</b> → ${escapeHtml(c.back)}</span>`;
         html += `<button class="btn btn-red" onclick="delCard(${c.id})">X</button></div>`;
     });
     document.getElementById("cards").innerHTML = html;

@@ -19,7 +19,7 @@ function show() {
     showingBack = false;
     var el = document.getElementById("card");
     el.className = "flashcard";
-    el.innerHTML = listaCarte[indice].front;
+    el.innerText = listaCarte[indice].front;
     document.getElementById("counter").innerText = "Carta " + (indice + 1) + " di " + listaCarte.length;
     document.getElementById("buttons").style.display = "none";
 }
@@ -28,10 +28,10 @@ function flip() {
     var el = document.getElementById("card");
     if (showingBack) {
         el.className = "flashcard";
-        el.innerHTML = listaCarte[indice].front;
+        el.innerText = listaCarte[indice].front;
     } else {
         el.className = "flashcard back";
-        el.innerHTML = listaCarte[indice].back;
+        el.innerText = listaCarte[indice].back;
         document.getElementById("buttons").style.display = "block";
     }
     showingBack = !showingBack;

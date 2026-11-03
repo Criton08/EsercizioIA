@@ -25,6 +25,18 @@ public class QuizService : IQuizService
     }
 
     /// <inheritdoc />
+    public Task<bool> DeckBelongsToUserAsync(int deckId, int userId)
+    {
+        return _context.Decks.AnyAsync(d => d.Id == deckId && d.UserId == userId);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> DeckIsVisibleToUserAsync(int deckId, int userId)
+    {
+        return _context.Decks.AnyAsync(d => d.Id == deckId && (d.UserId == userId || d.UserId == null));
+    }
+
+    /// <inheritdoc />
     public async Task<List<QuizQuestionDto>> GetQuestionsAsync(int deckId)
     {
         _logger.LogInformation("Loading questions for deck {DeckId}", deckId);
@@ -45,29 +57,38 @@ public class QuizService : IQuizService
         int correct = 0;
         var details = new List<AnswerDetail>();
 
-        foreach (var answer in submission.Answers)
+        // Keep one answer per question, so repeating a QuestionId cannot inflate the score.
+        var answers = submission.Answers.GroupBy(a => a.QuestionId).Select(g => g.First()).ToList();
+
+        // Load all the needed questions with a single query instead of one per answer.
+        var ids = answers.Select(a => a.QuestionId).ToList();
+        var questions = await _context.Questions
+            .Where(q => q.DeckId == submission.DeckId && ids.Contains(q.Id))
+            .ToDictionaryAsync(q => q.Id);
+
+        foreach (var answer in answers)
         {
-            // Retrieve the question to compare the selected option with the correct one.
-            var question = await _context.Questions.FindAsync(answer.QuestionId);
-            if (question == null)
+            // Compare the selected option with the correct one.
+            if (!questions.TryGetValue(answer.QuestionId, out var question))
             {
                 _logger.LogWarning("Question {Id} not found", answer.QuestionId);
                 continue;
             }
 
             bool isCorrect = answer.SelectedIndex == question.RispostaCorretta;
-            if (isCorrect == true)
+            if (isCorrect)
             {
-                correct++; // incrementa il numero di risposte corrette
+                correct++; // count the correct answers
             }
 
             details.Add(new AnswerDetail(question.Id, isCorrect, question.RispostaCorretta, question.Spiegazione));
         }
 
-        int total = submission.Answers.Count;
+        // Unknown questions are skipped, so they are not counted in the total either.
+        int total = details.Count;
 
-        // Calculate the percentage score.
-        int percentage = correct / total * 100;
+        // Calculate the percentage score (handles total == 0).
+        int percentage = Helpers.CalcolaPercentuale(correct, total);
 
         return new QuizOutcome(correct, total, percentage, details);
     }

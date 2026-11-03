@@ -14,7 +14,10 @@ function checkLogin() {
 
 function logout() {
     localStorage.removeItem("user");
-    window.location.href = "login.html";
+    // also end the server session (auth cookie), then go back to the login page
+    fetch("/api/logout", { method: "POST" }).finally(function () {
+        window.location.href = "login.html";
+    });
 }
 
 // mischia array
