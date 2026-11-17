@@ -2,7 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyBuddy - Studio</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/utils.js"></script>
 </head>
@@ -16,7 +18,7 @@
         <h1 id="title"></h1>
         <p id="counter"></p>
         <div id="card" class="flashcard" onclick="flip()"></div>
-        <p id="hint" style="color: gray">Clicca sulla carta per girarla</p>
+        <p id="hint" style="color: gray">Clicca sulla carta (o premi Spazio) per girarla. Poi ← "Non lo so", → "Lo so!"</p>
         <div id="buttons" style="display: none">
             <button class="btn btn-red" onclick="answer(false)">Non lo so 😕</button>
             <button class="btn btn-green" onclick="answer(true)">Lo so! 😎</button>

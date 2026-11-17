@@ -13,7 +13,7 @@ public class Card
     public string Front { get; set; } = "";
     public string Back { get; set; } = "";
 
-    // scatola leitner (1-5)
+    // Leitner box (1-5)
     public int Box { get; set; } = 1;
     public DateTime? LastReview { get; set; }
 }

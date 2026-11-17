@@ -1,128 +1,425 @@
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f4f6fb;
-    margin: 0;
-    color: #222;
+/*
+ * StudyBuddy look: a squared school notebook ("quaderno a quadretti").
+ * Blue pen ink for text and actions, highlighter yellow for the back of a card and for focus,
+ * red pen for mistakes and deletions, green for right answers.
+ */
+:root {
+    --paper: #ffffff;
+    --page: #f7f9fd;
+    --grid: #e4eaf5;
+    --ink: #1f3a93;
+    --ink-dark: #16296b;
+    --text: #1d2433;
+    --muted: #5d6779;
+    --line: #d5dceb;
+    --highlight: #ffe866;
+    --red: #d93025;
+    --green: #1e8e3e;
+    --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
 }
 
+* {
+    box-sizing: border-box;
+}
+
+/* the page is a sheet of squared paper (5 mm squares) */
+body {
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    margin: 0;
+    background-color: var(--page);
+    background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-display);
+    line-height: 1.2;
+    color: var(--ink-dark);
+}
+
+h1 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem;
+}
+
+h3 {
+    font-size: 1.15rem;
+    margin: 0 0 0.75rem;
+}
+
+/* ---------- header ---------- */
+
 .header {
-    background: #3b5bdb;
-    color: white;
-    padding: 15px 30px;
+    background: var(--paper);
+    border-bottom: 3px solid var(--ink);
+    padding: 10px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: -0.01em;
 }
 
 .header a {
-    color: white;
-    margin-left: 15px;
+    color: var(--ink);
+    margin-left: 18px;
     text-decoration: none;
+    font-weight: 600;
 }
+
+.header a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+#who {
+    color: var(--muted);
+}
+
+/* ---------- layout ---------- */
 
 .container {
-    width: 900px;
-    margin: 30px auto;
+    max-width: 920px;
+    margin: 32px auto;
+    padding: 0 16px;
 }
 
-.deck-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.deck {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    width: 250px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-.deck h3 {
-    margin-top: 0;
-}
-
-.materia {
-    display: inline-block;
-    background: #e7ecff;
-    color: #3b5bdb;
-    font-size: 12px;
-    padding: 3px 8px;
-    border-radius: 10px;
-}
-
-.btn {
-    background: #3b5bdb;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 14px;
-}
-
-.btn:hover {
-    background: #2b44b0;
-}
-
-.btn-red {
-    background: #e03131 !important;
-}
-
-.btn-green {
-    background: #2f9e44 !important;
-}
-
+/* a form or list sits on a flat sheet of paper */
 .box {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 22px 24px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-input, textarea, select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 14px;
-    margin: 4px 0;
-}
-
-.flashcard {
-    width: 500px;
-    height: 280px;
-    margin: 30px auto;
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    text-align: center;
-    padding: 20px;
-    cursor: pointer;
-}
-
-.flashcard.back {
-    background: #fff9db;
 }
 
 .center {
     text-align: center;
 }
 
+/* ---------- decks: index cards with a coloured tab for the subject ---------- */
+
+.deck-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+}
+
+.deck {
+    --subject: #7a869a;
+    position: relative;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-top: 6px solid var(--subject);
+    border-radius: 4px;
+    padding: 16px 18px 18px;
+    box-shadow: 3px 3px 0 var(--grid);
+    display: flex;
+    flex-direction: column;
+}
+
+.deck[data-materia="Storia"] { --subject: #8d5a2b; }
+.deck[data-materia="Scienze"] { --subject: #2e9d5b; }
+.deck[data-materia="Inglese"] { --subject: #c62f5c; }
+.deck[data-materia="Informatica"] { --subject: #2a6fdb; }
+.deck[data-materia="Matematica"] { --subject: #7b4cc2; }
+
+.deck h3 {
+    margin: 6px 0 4px;
+}
+
+.deck p {
+    margin: 0 0 8px;
+    color: var(--muted);
+}
+
+.deck-actions {
+    margin-top: auto;
+    padding-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.materia {
+    display: inline-block;
+    align-self: flex-start;
+    color: var(--subject, var(--ink));
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* ---------- buttons and fields ---------- */
+
+.btn {
+    background: var(--ink);
+    color: white;
+    border: 2px solid var(--ink);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font: 600 0.9rem var(--font);
+}
+
+.btn:hover {
+    background: var(--ink-dark);
+    border-color: var(--ink-dark);
+}
+
+.btn-red {
+    background: var(--red) !important;
+    border-color: var(--red) !important;
+}
+
+.btn-green {
+    background: var(--green) !important;
+    border-color: var(--green) !important;
+}
+
+/* secondary action: outlined in ink */
+.btn-outline {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.btn-outline:hover {
+    background: #eef2fc;
+    color: var(--ink-dark);
+}
+
+/* destructive action that must not compete with the main ones */
+.btn-quiet-danger {
+    background: none;
+    border: none;
+    color: var(--red);
+    padding: 7px 4px;
+    margin-left: auto;
+    font: 600 0.85rem var(--font);
+    cursor: pointer;
+}
+
+.btn-quiet-danger:hover {
+    text-decoration: underline;
+}
+
+input, textarea, select {
+    padding: 8px 10px;
+    border: 1px solid #b9c3d8;
+    border-radius: 5px;
+    font: 0.95rem var(--font);
+    color: var(--text);
+    background: var(--paper);
+    margin: 4px 0;
+    max-width: 100%; /* the inline widths (300px, 600px...) must not overflow small screens */
+}
+
+input:hover, select:hover {
+    border-color: var(--ink);
+}
+
+/* keyboard focus: marked with the highlighter, always visible */
+:focus-visible {
+    outline: 3px solid var(--highlight);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--ink);
+}
+
+input:focus-visible, select:focus-visible {
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--ink);
+}
+
+/* ---------- messages and confirmations inside the page ---------- */
+
+.msg {
+    margin: 10px 0 0;
+    font-weight: 600;
+}
+
+.msg:empty {
+    display: none;
+}
+
+.msg.ok {
+    color: var(--green);
+}
+
+.msg.ok::before {
+    content: "✓ ";
+}
+
+.msg.error {
+    color: var(--red);
+    border-left: 4px solid var(--red);
+    padding-left: 10px;
+}
+
+.confirm {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: #fff1f0;
+    border: 1px solid #f3b6b0;
+    border-radius: 6px;
+}
+
+.confirm p {
+    margin: 0 0 10px;
+    color: var(--text);
+}
+
+.confirm .btn {
+    margin-right: 8px;
+}
+
+/* ---------- flashcard: a ruled index card ---------- */
+
+.flashcard {
+    max-width: 520px;
+    height: 290px;
+    margin: 24px auto;
+    padding: 24px 32px;
+    background-color: var(--paper);
+    /* red line at the top, blue ruled lines below, like a real index card */
+    background-image:
+        linear-gradient(var(--red), var(--red)),
+        repeating-linear-gradient(transparent 0 31px, #cfdcf3 31px 32px);
+    background-size: 100% 2px, 100% 100%;
+    background-position: 0 52px, 0 54px;
+    background-repeat: no-repeat, no-repeat;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 var(--grid), 0 10px 24px rgba(31, 58, 147, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1.35;
+    text-align: center;
+    color: var(--ink-dark);
+    cursor: pointer;
+    user-select: none;
+    animation: card-front 0.22s ease-out;
+}
+
+/* the answer side is "highlighted" */
+.flashcard.back {
+    background-color: #fff6b8;
+    font-weight: 600;
+    animation: card-back 0.22s ease-out;
+}
+
+/* two different names, so the short turn plays again on every flip */
+@keyframes card-front {
+    from { transform: perspective(800px) rotateY(-12deg); }
+    to { transform: none; }
+}
+
+@keyframes card-back {
+    from { transform: perspective(800px) rotateY(12deg); }
+    to { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flashcard, .flashcard.back {
+        animation: none;
+    }
+}
+
+#buttons .btn {
+    min-width: 130px;
+    padding: 10px 18px;
+    font-size: 1rem;
+}
+
+/* ---------- lists and tables ---------- */
+
 .card-row {
     display: flex;
     justify-content: space-between;
-    border-bottom: 1px solid #eee;
-    padding: 8px 0;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #edf0f6;
+    padding: 9px 0;
 }
 
-.box {
-    padding: 25px;
+.card-row:last-child {
+    border-bottom: none;
+}
+
+.card-row i {
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--ink);
+    padding: 6px 12px 6px 0;
+}
+
+td {
+    border-bottom: 1px solid #edf0f6;
+    padding: 7px 12px 7px 0;
+}
+
+/* ---------- statistics ---------- */
+
+.stat-numbers h2 {
+    font-size: 2.6rem;
+    margin: 0;
+    color: var(--ink);
+}
+
+.stat-numbers div {
+    color: var(--muted);
+}
+
+/* ---------- phones ---------- */
+
+@media (max-width: 600px) {
+    .header {
+        flex-wrap: wrap;
+        padding: 10px 16px;
+    }
+
+    .header a {
+        margin-left: 0;
+        margin-right: 14px;
+    }
+
+    .box {
+        padding: 18px 16px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    .flashcard {
+        height: 230px;
+        font-size: 1.25rem;
+        padding: 20px;
+    }
 }

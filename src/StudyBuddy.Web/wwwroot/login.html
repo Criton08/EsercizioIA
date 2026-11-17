@@ -2,27 +2,41 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyBuddy - Login</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="header"><h2>📚 StudyBuddy</h2></div>
-    <div class="container" style="width: 400px">
+    <div class="container" style="max-width: 400px">
         <div class="box">
             <h3>Accedi</h3>
             <input id="username" placeholder="Username" style="width: 95%"><br>
             <input id="pwd" type="password" placeholder="Password" style="width: 95%"><br><br>
             <button class="btn" onclick="login()">Entra</button>
-            <button class="btn btn-green" onclick="register()">Registrati</button>
+            <button class="btn btn-outline" onclick="register()">Registrati</button>
             <p id="msg" style="color: red"></p>
         </div>
     </div>
 
     <script>
+        // sent here by utils.js because the server no longer knew the user
+        if (new URLSearchParams(location.search).get("scaduta") == "1") {
+            document.getElementById("msg").innerText = "Sessione scaduta: accedi di nuovo per continuare.";
+        }
+
+        // Enter in either field logs in, like a normal login form
+        ["username", "pwd"].forEach(function (id) {
+            document.getElementById(id).addEventListener("keydown", function (e) {
+                if (e.key == "Enter") login();
+            });
+        });
+
         function login() {
             var user = document.getElementById("username").value;
             var pw = document.getElementById("pwd").value;
-            // controllo campi
+            // field check
             if (user == "" || pw == "") {
                 document.getElementById("msg").innerText = "Compila tutti i campi";
                 return;
@@ -36,6 +50,11 @@
                     document.getElementById("msg").innerText = "Credenziali sbagliate";
                     return;
                 }
+                // any other error (e.g. 429 rate limit) must not be treated as a successful login
+                if (!r.ok) {
+                    document.getElementById("msg").innerText = errorMessage(r.status);
+                    return;
+                }
                 r.json().then(function (data) {
                     localStorage.setItem("user", JSON.stringify(data));
                     window.location.href = "index.html";
@@ -46,13 +65,17 @@
         function register() {
             var user = document.getElementById("username").value;
             var pw = document.getElementById("pwd").value;
-            // controllo campi
+            // field check (same limits as the server)
             if (user == "" || pw == "") {
                 document.getElementById("msg").innerText = "Compila tutti i campi!";
                 return;
             }
-            if (pw.length < 4) {
-                document.getElementById("msg").innerText = "Password troppo corta";
+            if (user.length < 3 || user.length > 50) {
+                document.getElementById("msg").innerText = "Lo username deve avere da 3 a 50 caratteri";
+                return;
+            }
+            if (pw.length < 4 || pw.length > 100) {
+                document.getElementById("msg").innerText = "La password deve avere da 4 a 100 caratteri";
                 return;
             }
             fetch("/api/register", {
@@ -61,7 +84,7 @@
                 body: JSON.stringify({ username: user, password: pw })
             }).then(function (r) {
                 if (!r.ok) {
-                    document.getElementById("msg").innerText = "Errore registrazione";
+                    document.getElementById("msg").innerText = r.status == 409 ? "Utente già esistente" : errorMessage(r.status);
                     return;
                 }
                 r.json().then(function (data) {
@@ -69,6 +92,12 @@
                     window.location.href = "index.html";
                 });
             });
+        }
+
+        // message for a refused login or registration
+        function errorMessage(status) {
+            if (status == 429) return "Troppi tentativi: riprova tra un minuto";
+            return "Errore (" + status + "), riprova";
         }
     </script>
 </body>

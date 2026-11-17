@@ -2,7 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyBuddy - Statistiche</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/utils.js"></script>
 </head>
@@ -14,15 +16,18 @@
 
     <div class="container">
         <h1>📊 Le tue statistiche</h1>
-        <div class="box" style="display: flex; gap: 40px">
+        <div class="box stat-numbers" style="display: flex; gap: 48px">
             <div><h2 id="totale">-</h2>quiz svolti</div>
             <div><h2 id="media">-</h2>media punteggio</div>
         </div>
         <div class="box">
             <h3>Storico</h3>
-            <table style="width: 100%" id="tabella">
-                <tr><th align="left">Data</th><th align="left">Mazzo</th><th align="left">Corrette</th><th align="left">Punteggio</th><th align="left">Giudizio</th></tr>
-            </table>
+            <!-- 5 columns do not fit on a phone: the table scrolls sideways instead of the whole page -->
+            <div style="overflow-x: auto">
+                <table style="width: 100%" id="tabella">
+                    <tr><th align="left">Data</th><th align="left">Mazzo</th><th align="left">Corrette</th><th align="left">Punteggio</th><th align="left">Giudizio</th></tr>
+                </table>
+            </div>
             <p id="empty" style="color: gray; display: none">Nessun quiz ancora svolto. Mettiti alla prova! 💪</p>
         </div>
     </div>

@@ -44,14 +44,18 @@ public static class AdminEndpoints
             };
         }).AllowAnonymous(); // protected by the admin key, not by the user cookie
 
-        app.MapPost("/api/admin/reset", (HttpRequest request, StudyDbContext db, IConfiguration cfg) =>
+        // wipes the whole database (every user, deck and result) and seeds the demo data again.
+        // It cannot be undone, so the caller must also confirm explicitly with ?confirm=RESET.
+        app.MapPost("/api/admin/reset", (HttpRequest request, StudyDbContext db, IConfiguration cfg, string? confirm) =>
         {
             if (!IsAdmin(request, cfg)) return Results.Unauthorized();
+            if (confirm != "RESET")
+                return Results.BadRequest("this deletes all data: add ?confirm=RESET to the URL to proceed");
 
             db.Database.EnsureDeleted();
             db.Database.EnsureCreated();
             Seed.Init(db);
-            return Results.Ok("reset fatto");
+            return Results.Ok("database reset");
         }).AllowAnonymous(); // protected by the admin key, not by the user cookie
     }
 }

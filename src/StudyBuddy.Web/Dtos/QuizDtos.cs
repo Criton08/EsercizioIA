@@ -17,6 +17,3 @@ public record QuizOutcome(int Correct, int Total, int Percentage, List<AnswerDet
 
 /// <summary>Payload used to create a new question.</summary>
 public record NewQuestionRequest(string Domanda, List<string> Opzioni, int RispostaCorretta, string? Spiegazione);
-
-/// <summary>Generic DTO for a deck (currently unused, kept for future API versioning).</summary>
-public record DeckDto(int Id, string Name, string Materia, int CardCount);

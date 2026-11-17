@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- a ruled index card in the app colours: blue ink, red top line -->
+  <rect x="2" y="5" width="28" height="22" rx="3" fill="#ffffff" stroke="#1f3a93" stroke-width="2.5"/>
+  <line x1="3" y1="11" x2="29" y2="11" stroke="#d93025" stroke-width="2"/>
+  <line x1="7" y1="17" x2="25" y2="17" stroke="#1f3a93" stroke-width="2" stroke-linecap="round"/>
+  <line x1="7" y1="22" x2="19" y2="22" stroke="#1f3a93" stroke-width="2" stroke-linecap="round"/>
+</svg>

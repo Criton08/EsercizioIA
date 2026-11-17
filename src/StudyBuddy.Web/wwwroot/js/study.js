@@ -1,10 +1,11 @@
 checkLogin();
 
-// variabili
-var listaCarte = []; // le carte
-var indice = 0; // indice della carta corrente
+// state
+var listaCarte = []; // the cards
+var indice = 0; // index of the current card
 var showingBack = false;
-var known = 0; // carte sapute
+var known = 0; // cards the user knew
+var answering = false; // true from an answer until the next card is shown
 var idMazzo = getParam("deck");
 
 fetch("/api/decks/" + idMazzo)
@@ -34,6 +35,7 @@ function showMessage(text) {
 
 function show() {
     showingBack = false;
+    answering = false;
     var el = document.getElementById("card");
     el.className = "flashcard";
     el.innerText = listaCarte[indice].front;
@@ -55,21 +57,39 @@ function flip() {
 }
 
 function answer(isKnown) {
+    // a double click would count the card twice and skip the next one
+    if (answering) return;
+    answering = true;
     var url = "/api/cards/" + listaCarte[indice].id + (isKnown ? "/known" : "/unknown");
     fetch(url, { method: "PUT" });
     if (isKnown) known++;
     setTimeout(next, 250);
 }
 
-// passa alla carta successiva
+// moves to the next card
 function next() {
-    indice++; // incrementa indice
+    indice++;
     if (indice >= listaCarte.length) { // the last card must be shown too
         finish();
         return;
     }
     show();
 }
+
+// keyboard: Space or Enter flips the card; once it is flipped, left arrow = "Non lo so", right arrow = "Lo so!"
+document.addEventListener("keydown", function (e) {
+    if (listaCarte.length == 0 || indice >= listaCarte.length) return;
+    // a focused button or link keeps its own Enter/Space behavior
+    if (e.target.closest("button, a")) return;
+    if (e.key == " " || e.key == "Enter") {
+        e.preventDefault(); // Space would scroll the page
+        flip();
+    } else if (showingBack && e.key == "ArrowLeft") {
+        answer(false);
+    } else if (showingBack && e.key == "ArrowRight") {
+        answer(true);
+    }
+});
 
 function finish() {
     document.getElementById("card").style.display = "none";

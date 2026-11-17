@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +37,16 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 // Every endpoint requires a logged-in user unless it is marked AllowAnonymous.
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
+// Rate limit on login and register: at most 10 attempts per minute from the same IP address,
+// so passwords cannot be guessed by brute force. Extra requests get 429 Too Many Requests.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 
 var app = builder.Build();
 
@@ -85,6 +96,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 // ===================== LOGIN =====================
 
@@ -92,6 +104,9 @@ app.UseAuthorization();
 app.MapPost("/api/login", async (HttpContext ctx, StudyDbContext db, LoginRequest req) =>
 {
     if (string.IsNullOrEmpty(req.Username) || string.IsNullOrEmpty(req.Password))
+        return Results.Unauthorized();
+    // no stored account can be this long: refuse before hashing a huge password
+    if (req.Username.Length > InputLimits.UsernameMax || req.Password.Length > InputLimits.PasswordMax)
         return Results.Unauthorized();
 
     // find the user
@@ -106,15 +121,9 @@ app.MapPost("/api/login", async (HttpContext ctx, StudyDbContext db, LoginReques
         db.SaveChanges();
     }
 
-    var identity = new ClaimsIdentity(new[]
-    {
-        new Claim(ClaimTypes.NameIdentifier, u.Id.ToString()),
-        new Claim(ClaimTypes.Name, u.Username)
-    }, CookieAuthenticationDefaults.AuthenticationScheme);
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
-
+    await SignInUser(ctx, u);
     return Results.Ok(new { u.Id, u.Username });
-}).AllowAnonymous();
+}).AllowAnonymous().RequireRateLimiting("auth");
 
 app.MapPost("/api/logout", async (HttpContext ctx) =>
 {
@@ -122,20 +131,28 @@ app.MapPost("/api/logout", async (HttpContext ctx) =>
     return Results.Ok();
 }).AllowAnonymous();
 
-app.MapPost("/api/register", (StudyDbContext db, LoginRequest req) =>
+app.MapPost("/api/register", async (HttpContext ctx, StudyDbContext db, LoginRequest req) =>
 {
     if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrEmpty(req.Password))
-        return Results.BadRequest("username e password obbligatori");
+        return Results.BadRequest("username and password are required");
+    if (req.Username.Length < InputLimits.UsernameMin || req.Username.Length > InputLimits.UsernameMax)
+        return Results.BadRequest($"username must be {InputLimits.UsernameMin}-{InputLimits.UsernameMax} characters");
+    if (req.Password.Length < InputLimits.PasswordMin || req.Password.Length > InputLimits.PasswordMax)
+        return Results.BadRequest($"password must be {InputLimits.PasswordMin}-{InputLimits.PasswordMax} characters");
 
     if (db.Users.Any(x => x.Username == req.Username))
-        return Results.BadRequest("utente gia esistente");
+        return Results.Conflict("user already exists");
 
     // create the new user (the password is stored as a hash)
     var u = new User { Username = req.Username, Password = PasswordHasher.Hash(req.Password) };
     db.Users.Add(u);
     db.SaveChanges();
+
+    // the new user is logged in right away: the page goes straight to the decks, which need the auth cookie
+    // (without it every API call answered 401 and the user only saw "Sessione scaduta")
+    await SignInUser(ctx, u);
     return Results.Ok(new { u.Id, u.Username });
-}).AllowAnonymous();
+}).AllowAnonymous().RequireRateLimiting("auth");
 
 // ===================== DECKS =====================
 // Every deck belongs to the user who created it: users only see and change their own decks.
@@ -156,6 +173,10 @@ app.MapPost("/api/decks", (ClaimsPrincipal user, StudyDbContext db, NewDeckReque
 {
     if (string.IsNullOrWhiteSpace(req.Name))
         return Results.BadRequest("name is required");
+    if (req.Name.Length > InputLimits.DeckName
+        || (req.Descrizione?.Length ?? 0) > InputLimits.DeckDescription
+        || (req.Materia?.Length ?? 0) > InputLimits.DeckSubject)
+        return Results.BadRequest($"name max {InputLimits.DeckName}, descrizione max {InputLimits.DeckDescription}, materia max {InputLimits.DeckSubject} characters");
 
     var deck = new Deck { UserId = user.GetUserId(), Name = req.Name, Descrizione = req.Descrizione };
     if (!string.IsNullOrEmpty(req.Materia)) deck.Materia = req.Materia;
@@ -180,6 +201,8 @@ app.MapPost("/api/decks/{id}/cards", (int id, NewCardRequest req, ClaimsPrincipa
         return Results.NotFound();
     if (string.IsNullOrWhiteSpace(req.Front) || string.IsNullOrWhiteSpace(req.Back))
         return Results.BadRequest("front and back are required");
+    if (req.Front.Length > InputLimits.CardSide || req.Back.Length > InputLimits.CardSide)
+        return Results.BadRequest($"front and back max {InputLimits.CardSide} characters");
 
     var card = new Card { DeckId = id, Front = req.Front, Back = req.Back };
     db.Cards.Add(card);
@@ -239,6 +262,17 @@ app.MapStatsEndpoints();
 app.MapAdmin();
 
 app.Run();
+
+// issues the auth cookie that identifies the user on every request (used by login and register)
+static Task SignInUser(HttpContext ctx, User u)
+{
+    var identity = new ClaimsIdentity(new[]
+    {
+        new Claim(ClaimTypes.NameIdentifier, u.Id.ToString()),
+        new Claim(ClaimTypes.Name, u.Username)
+    }, CookieAuthenticationDefaults.AuthenticationScheme);
+    return ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+}
 
 record LoginRequest(string Username, string Password);
 record NewDeckRequest(string? Name, string? Descrizione, string? Materia);

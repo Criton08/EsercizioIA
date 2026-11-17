@@ -13,7 +13,7 @@ cd src/StudyBuddy.Web
 dotnet run
 ```
 
-- Open `http://localhost:5200` (port comes from `Properties/launchSettings.json`).
+- Open `int` (port comes from `Properties/launchSettings.json`).
 - The DB is created and seeded on startup at `database/studybuddy.db` (relative to the working directory, gitignored).
 - Demo users: `mario` / `password123`, `giulia` / `giulia2008`.
 - Admin endpoints (`/api/admin/*`) are disabled unless `AdminKey` is configured (env var `AdminKey` or `dotnet user-secrets set AdminKey <value>`). Send it in the `X-Admin-Key` header.

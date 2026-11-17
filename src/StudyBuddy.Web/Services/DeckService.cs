@@ -4,8 +4,7 @@ using StudyBuddy.Web.Models;
 
 namespace StudyBuddy.Web.Services;
 
-// ✅ REFACTORING: deck logic moved out of Program.cs into a dedicated service 🚀
-// 👉 Program.cs should now call this service for everything deck-related
+// Deck queries used by the endpoints in Program.cs (list, read and delete)
 public class DeckService
 {
     private readonly StudyDbContext db;
@@ -15,42 +14,34 @@ public class DeckService
         this.db = db;
     }
 
-    // 📦 Get the decks of a user (plus the shared ones) with card and question counts
+    // Get the decks of a user (plus the shared ones) with card and question counts.
+    // A single SQL query: the counts are subqueries, not two extra queries per deck.
     public List<object> GetAllDecks(int userId)
     {
-        var decks = db.Decks.Where(d => d.UserId == userId || d.UserId == null).ToList();
-        var result = new List<object>();
-
-        foreach (var d in decks)
-        {
-            var cardCount = db.Cards.Count(c => c.DeckId == d.Id);
-            var questionCount = db.Questions.Count(q => q.DeckId == d.Id);
-            result.Add(new { d.Id, d.Name, d.Materia, d.Descrizione, numCarte = cardCount, numDomande = questionCount });
-        }
-
-        return result;
+        return db.Decks
+            .Where(d => d.UserId == userId || d.UserId == null)
+            .Select(d => new
+            {
+                d.Id,
+                d.Name,
+                d.Materia,
+                d.Descrizione,
+                shared = d.UserId == null,
+                numCarte = d.Cards.Count,
+                numDomande = db.Questions.Count(q => q.DeckId == d.Id)
+            })
+            .AsEnumerable()
+            .Cast<object>()
+            .ToList();
     }
 
-    // ottiene i mazzi (versione semplice)
-    public List<object> OttieniMazzi()
-    {
-        var lista = new List<object>();
-        foreach (var mazzo in db.Decks.ToList())
-        {
-            // conta le carte del mazzo
-            var numero = db.Cards.Where(c => c.DeckId == mazzo.Id).Count();
-            lista.Add(new { mazzo.Id, mazzo.Name, mazzo.Materia, numCarte = numero });
-        }
-        return lista;
-    }
-
-    // 🔍 Get a single deck of a user (or a shared one) with its cards
+    // Get a single deck of a user (or a shared one) with its cards
     public Deck? GetDeck(int id, int userId)
     {
         return db.Decks.Include(d => d.Cards).FirstOrDefault(d => d.Id == id && (d.UserId == userId || d.UserId == null));
     }
 
-    // 🗑️ Delete a deck of a user and everything inside it (cards + questions)
+    // Delete a deck of a user and everything inside it (cards + questions)
     public bool DeleteDeck(int id, int userId)
     {
         var deck = db.Decks.FirstOrDefault(d => d.Id == id && d.UserId == userId);

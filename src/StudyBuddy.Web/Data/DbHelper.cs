@@ -10,7 +10,9 @@ public class DbHelper
 {
     private readonly string _connectionString;
 
-    public DbHelper(string connectionString = "Data Source=studybuddy.db")
+    // no default value: the old default pointed to a different DB file than the app's,
+    // so callers must pass the "Default" connection string from configuration
+    public DbHelper(string connectionString)
     {
         _connectionString = connectionString;
     }
@@ -53,7 +55,7 @@ public class DbHelper
     }
 
     /// <summary>
-    /// Full text search over the cards (front and back) of the decks owned by the user.
+    /// Full text search over the cards (front and back) of the decks owned by the user and the shared decks.
     /// </summary>
     public List<Dictionary<string, object>> Search(string q, int userId)
     {
@@ -64,7 +66,7 @@ public class DbHelper
 
         var cmd = conn.CreateCommand();
         // parameterized query, safe against SQL injection; % and _ typed by the user are escaped
-        cmd.CommandText = "SELECT c.Id, c.Front, c.Back, c.DeckId, d.Name FROM Cards c JOIN Decks d ON d.Id = c.DeckId WHERE d.UserId = $userId AND (c.Front LIKE $q ESCAPE '\\' OR c.Back LIKE $q ESCAPE '\\')";
+        cmd.CommandText = "SELECT c.Id, c.Front, c.Back, c.DeckId, d.Name FROM Cards c JOIN Decks d ON d.Id = c.DeckId WHERE (d.UserId = $userId OR d.UserId IS NULL) AND (c.Front LIKE $q ESCAPE '\\' OR c.Back LIKE $q ESCAPE '\\')";
         cmd.Parameters.AddWithValue("$userId", userId);
         var escaped = q.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
         cmd.Parameters.AddWithValue("$q", "%" + escaped + "%");

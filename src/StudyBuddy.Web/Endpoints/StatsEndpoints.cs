@@ -20,12 +20,14 @@ public static class StatsEndpoints
                 .OrderByDescending(r => r.Id)
                 .ToList();
 
-            var decks = db.Decks.ToList();
+            // load only the decks that appear in the results, not every deck of every user
+            var deckIds = results.Select(r => r.DeckId).Distinct().ToList();
+            var deckNames = db.Decks.Where(d => deckIds.Contains(d.Id)).ToDictionary(d => d.Id, d => d.Name);
 
             var list = results.Select(r => new
             {
                 r.Id,
-                mazzo = decks.FirstOrDefault(d => d.Id == r.DeckId)?.Name ?? "?",
+                mazzo = deckNames.GetValueOrDefault(r.DeckId) ?? "?",
                 r.Punteggio,
                 r.Corrette,
                 r.Totale,

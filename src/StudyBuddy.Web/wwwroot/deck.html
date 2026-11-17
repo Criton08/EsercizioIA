@@ -2,7 +2,9 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyBuddy - Mazzo</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/utils.js"></script>
 </head>
@@ -21,6 +23,7 @@
             <input id="front" placeholder="Fronte (domanda)" style="width: 300px">
             <input id="back" placeholder="Retro (risposta)" style="width: 300px">
             <button class="btn" id="btnAddCard">Aggiungi</button>
+            <p id="msgCard" class="msg" role="status"></p>
         </div>
 
         <div class="box">
@@ -38,6 +41,7 @@
                 <option value="4">4</option>
             </select>
             <button class="btn" id="btnAddQuestion">Aggiungi domanda</button>
+            <p id="msgQuestion" class="msg" role="status"></p>
         </div>
 
         <div class="box">
@@ -45,7 +49,10 @@
             <div id="cards"></div>
         </div>
 
-        <button class="btn btn-red" id="btnDelete">Elimina mazzo</button>
+        <div id="deleteArea">
+            <button class="btn btn-red" id="btnDelete">Elimina mazzo</button>
+            <p id="msgDelete" class="msg" role="status"></p>
+        </div>
     </div>
 
     <script type="module" src="js/deck.js"></script>

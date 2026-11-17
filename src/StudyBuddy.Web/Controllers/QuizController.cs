@@ -44,13 +44,14 @@ public class QuizController : ControllerBase
     {
         // The user comes from the auth cookie: submission.UserId is ignored.
         var userId = User.GetUserId();
+        if (submission?.Answers == null || submission.Answers.Count == 0)
+            return BadRequest("answers are required"); // an empty quiz would be saved as a 0/0 result
         if (!await _quizService.DeckIsVisibleToUserAsync(submission.DeckId, userId))
             return NotFound();
 
         var outcome = await _quizService.EvaluateAsync(submission);
 
         // Persist the result for the statistics page.
-        // Use the app's connection string: the DbHelper default points to a different DB file.
         var helper = new DbHelper(_config.GetConnectionString("Default")!);
         helper.SaveResult(userId, submission.DeckId, outcome.Percentage, outcome.Correct, outcome.Total);
 
@@ -75,6 +76,15 @@ public class QuizController : ControllerBase
             || request.RispostaCorretta >= request.Opzioni.Count)
         {
             return BadRequest("a question needs text, at least 2 non-empty options without '|', and a valid correct index");
+        }
+
+        // Length limits, so a client cannot store huge texts.
+        if (request.Domanda.Length > InputLimits.QuestionText
+            || request.Opzioni.Count > InputLimits.QuestionOptionsMax
+            || request.Opzioni.Any(o => o.Length > InputLimits.QuestionOption)
+            || (request.Spiegazione?.Length ?? 0) > InputLimits.QuestionExplanation)
+        {
+            return BadRequest($"domanda max {InputLimits.QuestionText} characters, at most {InputLimits.QuestionOptionsMax} options of max {InputLimits.QuestionOption}, spiegazione max {InputLimits.QuestionExplanation}");
         }
 
         var question = await _quizService.AddQuestionAsync(deckId, request);

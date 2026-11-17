@@ -27,8 +27,8 @@ export async function apiPost(url, body) {
 
 export async function apiDelete(url) {
     try {
-        await fetch(url, { method: "DELETE" });
-        return true;
+        const res = await fetch(url, { method: "DELETE" });
+        return res.ok; // false when the server refused (404, 401...)
     } catch (e) {
         console.log(e);
         return false;

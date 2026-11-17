@@ -21,8 +21,16 @@ class QuizApp {
      */
     async init() {
         const response = await fetch(`/api/quiz/${this.deckId}`);
+        if (!response.ok) {
+            this.container.innerHTML = `<p class="center">Impossibile caricare il quiz.</p><p class="center"><a class="btn" href="index.html">Torna ai mazzi</a></p>`;
+            return;
+        }
         this.questions = await response.json();
-        console.log("questions loaded", this.questions);
+        // an empty quiz must not be submitted (it would be saved as a 0/0 result)
+        if (this.questions.length == 0) {
+            this.container.innerHTML = `<p class="center">Questo mazzo non ha domande. Aggiungile da "Modifica".</p><p class="center"><a class="btn" href="index.html">Torna ai mazzi</a></p>`;
+            return;
+        }
         this.render();
     }
 
@@ -55,6 +63,8 @@ class QuizApp {
      * @param {number} index - the selected option index
      */
     select(index) {
+        // the quiz is already over (e.g. a double click on the last answer while it is being sent)
+        if (this.current >= this.questions.length) return;
         this.answers.push({
             questionId: this.questions[this.current].id,
             selectedIndex: index
@@ -67,6 +77,8 @@ class QuizApp {
      * Submits the answers to the server and shows the outcome.
      */
     async finish() {
+        // remove the last question's buttons while the answers are being sent
+        this.container.innerHTML = `<p class="center">Invio delle risposte...</p>`;
         const response = await fetch("/api/quiz/submit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -86,7 +98,7 @@ class QuizApp {
 
         outcome.details.forEach(d => {
             const q = this.questions.find(x => x.id === d.questionId);
-            // risposta giusta o sbagliata
+            // right or wrong answer
             if (d.correct == true) {
                 html += `<div class="detail ok">`;
                 html += `✅ ${escapeHtml(q.domanda)}<br>`;
